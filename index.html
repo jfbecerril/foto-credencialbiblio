@@ -25,7 +25,11 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 .cam-btn:hover{background:#055c4c}
 .cam-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;margin-bottom:.75rem}
 .cam-wrap video{display:block;width:100%;height:auto}
+.cam-wrap video.mirrored{transform:scaleX(-1)}
 .cam-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.switch-cam-btn{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.45);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2}
+.switch-cam-btn svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cam-mode-label{position:absolute;top:16px;left:10px;background:rgba(0,0,0,.45);color:#fff;font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;z-index:2}
 .preview-box{width:100%;border-radius:12px;overflow:hidden;margin-bottom:1rem;background:#eee;text-align:center}
 .preview-box canvas{display:block;width:100%;height:auto}
 .btn-row{display:flex;gap:.75rem;margin-top:.5rem}
@@ -45,8 +49,8 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 .inst-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:.5rem;font-size:13px;color:#444;line-height:1.4}
 .inst-item:last-child{margin-bottom:0}
 .inst-num{width:20px;height:20px;border-radius:50%;background:#077B64;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.wa-btn{width:100%;padding:.85rem;background:#25D366;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:.25rem}
-.wa-btn:hover{background:#1ebe5d}
+.filename-box{background:#f5f5f0;border:1px dashed #ccc;border-radius:8px;padding:.7rem .9rem;font-size:13px;color:#555;margin-bottom:1rem;word-break:break-all}
+.filename-box strong{color:#1a1a1a}
 </style>
 </head>
 <body>
@@ -71,11 +75,15 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
     </div>
     <div class="tip-item">
       <div class="tip-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
-      <span>Centra tu <strong>cara y hombros</strong> dentro del recuadro guía</span>
+      <span>Solo se necesita el <strong>rostro</strong> — céntralo dentro del recuadro guía</span>
     </div>
     <div class="tip-item">
       <div class="tip-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
       <span><strong>Expresión neutral</strong> — boca cerrada, ojos bien abiertos al frente</span>
+    </div>
+    <div class="tip-item">
+      <div class="tip-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <span>Si te complica extender el brazo, pide a <strong>otra persona</strong> que te tome la foto usando el botón para girar la cámara</span>
     </div>
     <div class="tip-item">
       <div class="tip-icon warn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
@@ -105,7 +113,10 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
     <div id="camArea" style="display:none;margin-top:1rem">
       <div class="cam-wrap">
         <video id="video" autoplay playsinline></video>
-        <!-- Overlay: silueta con espacio superior -->
+        <div class="cam-mode-label" id="camModeLabel">Cámara frontal</div>
+        <button class="switch-cam-btn" id="switchCamBtn" title="Girar cámara">
+          <svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </button>
         <svg class="cam-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <path d="
             M50 10
@@ -138,73 +149,87 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
     </div>
     <div class="btn-row">
       <button class="btn-secondary" id="retakeBtn">Volver a tomar</button>
-      <button class="btn-primary" id="sendBtn">Continuar</button>
+      <button class="btn-primary" id="sendBtn">Guardar foto</button>
     </div>
   </div>
 
-  <!-- Paso 3: instrucciones WhatsApp -->
+  <!-- Paso 3: confirmación de descarga -->
   <div class="step" id="step3">
     <div class="success-icon">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <p class="success-title">¡Foto lista!</p>
-    <p class="success-sub">Sigue estos pasos para enviarla</p>
-    <div style="background:#fff0f0;border:2px solid #e53935;border-radius:12px;padding:1rem;margin-bottom:1rem;text-align:center">
-      <div style="font-size:28px;margin-bottom:4px">📎</div>
-      <div style="font-size:15px;font-weight:700;color:#c62828;margin-bottom:4px">¡No olvides adjuntar tu foto!</div>
-      <div style="font-size:13px;color:#b71c1c;line-height:1.5">Al abrir WhatsApp, toca el ícono de adjuntar <strong>📎</strong>, ve a <strong>Galería</strong> y selecciona la foto que acabas de tomar.<br><strong>Sin la foto tu credencial no podrá procesarse.</strong></div>
-    </div>
+    <p class="success-title">¡Foto guardada!</p>
+    <p class="success-sub">Ya está en tu celular, lista para subirse</p>
+    <div class="filename-box">Archivo guardado como:<br><strong id="filenameText"></strong></div>
     <div class="instrucciones">
-      <div class="instrucciones-title">Pasos para enviar</div>
+      <div class="instrucciones-title">Siguiente paso</div>
       <div class="inst-item">
         <div class="inst-num">1</div>
-        <span>Toca <strong>"Abrir WhatsApp"</strong> — se abrirá un chat listo</span>
+        <span>La foto se descargó a tu carpeta de <strong>Descargas / Galería</strong></span>
       </div>
       <div class="inst-item">
         <div class="inst-num">2</div>
-        <span>Toca el ícono <strong>📎 adjuntar</strong> → <strong>Galería</strong></span>
+        <span>Abre el <strong>formulario de Google</strong> de la biblioteca</span>
       </div>
       <div class="inst-item">
         <div class="inst-num">3</div>
-        <span>Selecciona la foto que <strong>acabas de tomar</strong> y envía el mensaje</span>
+        <span>En la pregunta de la foto, toca <strong>subir archivo</strong> y selecciona la imagen que acabas de guardar</span>
       </div>
     </div>
-    <button class="wa-btn" id="waBtn">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.625a.75.75 0 0 0 .919.919l5.768-1.476A11.952 11.952 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.693-.535-5.214-1.46l-.374-.22-3.878.993.993-3.878-.22-.374A9.953 9.953 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-      </svg>
-      Abrir WhatsApp
-    </button>
-    <button class="btn-secondary" style="width:100%;margin-top:.75rem" id="resetBtn">Tomar otra foto</button>
+    <button class="btn-secondary" style="width:100%" id="resetBtn">Tomar otra foto</button>
   </div>
 </div>
 
 <script>
-const WHATSAPP_NUMBER = '522818701056';
-const OUT_W = 295, OUT_H = 354;
+const OUT_W = 826, OUT_H = 1062;
 let finalDataUrl = null;
 let alumnoNombre = '';
+let currentStream = null;
+let facingMode = 'user';
 
 function showStep(n){
   document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
   document.getElementById('step' + n).classList.add('active');
 }
 
+function updateMirror(){
+  const video = document.getElementById('video');
+  if(facingMode === 'user'){
+    video.classList.add('mirrored');
+    document.getElementById('camModeLabel').textContent = 'Cámara frontal';
+  } else {
+    video.classList.remove('mirrored');
+    document.getElementById('camModeLabel').textContent = 'Cámara trasera';
+  }
+}
+
+async function startCamera(){
+  if(currentStream){
+    currentStream.getTracks().forEach(t => t.stop());
+  }
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:facingMode}, audio:false});
+    document.getElementById('video').srcObject = currentStream;
+    updateMirror();
+  } catch(err) {
+    alert('No se pudo acceder a la cámara. Asegúrate de dar permiso cuando el navegador lo solicite.');
+    document.getElementById('camArea').style.display = 'none';
+    document.getElementById('openCamBtn').style.display = 'flex';
+  }
+}
+
 document.getElementById('openCamBtn').addEventListener('click', async () => {
   const name = document.getElementById('nameInput').value.trim();
   if(!name){ alert('Por favor escribe tu nombre antes de continuar.'); return; }
-  const camArea = document.getElementById('camArea');
-  camArea.style.display = 'block';
+  document.getElementById('camArea').style.display = 'block';
   document.getElementById('openCamBtn').style.display = 'none';
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false});
-    document.getElementById('video').srcObject = stream;
-  } catch(err) {
-    alert('No se pudo acceder a la cámara. Asegúrate de dar permiso cuando el navegador lo solicite.');
-    camArea.style.display = 'none';
-    document.getElementById('openCamBtn').style.display = 'flex';
-  }
+  facingMode = 'user';
+  await startCamera();
+});
+
+document.getElementById('switchCamBtn').addEventListener('click', async () => {
+  facingMode = (facingMode === 'user') ? 'environment' : 'user';
+  await startCamera();
 });
 
 document.getElementById('snapBtn').addEventListener('click', () => {
@@ -212,9 +237,13 @@ document.getElementById('snapBtn').addEventListener('click', () => {
   const canvas = document.getElementById('hiddenCanvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  const stream = video.srcObject;
-  if(stream) stream.getTracks().forEach(t => t.stop());
+  const ctx = canvas.getContext('2d');
+  if(facingMode === 'user'){
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0);
+  if(currentStream) currentStream.getTracks().forEach(t => t.stop());
   cropAndShow(canvas);
 });
 
@@ -237,31 +266,27 @@ function cropAndShow(sourceCanvas){
   showStep(2);
 }
 
-document.getElementById('retakeBtn').addEventListener('click', () => {
-  const camArea = document.getElementById('camArea');
-  camArea.style.display = 'none';
-  document.getElementById('openCamBtn').style.display = 'flex';
+document.getElementById('retakeBtn').addEventListener('click', async () => {
   finalDataUrl = null;
   showStep(1);
+  document.getElementById('camArea').style.display = 'block';
+  document.getElementById('openCamBtn').style.display = 'none';
+  await startCamera();
 });
 
 document.getElementById('sendBtn').addEventListener('click', () => {
   if(!finalDataUrl){ alert('Primero toma una foto.'); return; }
   const name = document.getElementById('nameInput').value.trim();
   alumnoNombre = name;
+  const filename = 'credencial_' + name.replace(/\s+/g,'_') + '.jpg';
   const a = document.createElement('a');
   a.href = finalDataUrl;
-  a.download = 'credencial_' + name.replace(/\s+/g,'_') + '.jpg';
+  a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
+  document.getElementById('filenameText').textContent = filename;
   showStep(3);
-});
-
-document.getElementById('waBtn').addEventListener('click', () => {
-  const msg = encodeURIComponent(
-    'Hola, te envío mi foto para la credencial de biblioteca.\nNombre: ' + alumnoNombre +
-    '\n\n📎 Adjunto la imagen a continuación.'
-  );
-  window.open('https://wa.me/' + WHATSAPP_NUMBER + '?text=' + msg, '_blank');
 });
 
 document.getElementById('resetBtn').addEventListener('click', () => {
