@@ -86,6 +86,10 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
       <span>Si te complica extender el brazo, pide a <strong>otra persona</strong> que te tome la foto usando el botón para girar la cámara</span>
     </div>
     <div class="tip-item">
+      <div class="tip-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <span>No es necesario mantener el celular <strong>perfectamente vertical</strong> — puedes inclinarlo un poco hacia atrás para mayor comodidad, siempre que tu rostro quede dentro de la silueta</span>
+    </div>
+    <div class="tip-item">
       <div class="tip-icon warn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
       <span>Evita ropa <strong>blanca</strong> — usa otro color para contrastar con el fondo</span>
     </div>
@@ -102,7 +106,7 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
   <!-- Paso 1: captura -->
   <div class="step active" id="step1">
     <label class="field-label">Tu nombre(s) y apellidos</label>
-    <input type="text" class="name-field" id="nameInput" placeholder="Ej: Rogelio Alejandro Estudillo Ramírez" autocomplete="off" style="margin-bottom:.75rem">
+    <input type="text" class="name-field" id="nameInput" placeholder="Ej: Juan Pérez Contreras" autocomplete="off" style="margin-bottom:.75rem">
     <button class="cam-btn" id="openCamBtn" style="margin-bottom:.75rem">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -139,164 +143,4 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
         Capturar foto
       </button>
     </div>
-    <canvas id="hiddenCanvas" style="display:none"></canvas>
-  </div>
-
-  <!-- Paso 2: previsualización -->
-  <div class="step" id="step2">
-    <div class="preview-box">
-      <canvas id="cropCanvas"></canvas>
-    </div>
-    <div class="btn-row">
-      <button class="btn-secondary" id="retakeBtn">Volver a tomar</button>
-      <button class="btn-primary" id="sendBtn">Guardar foto</button>
-    </div>
-  </div>
-
-  <!-- Paso 3: confirmación de descarga -->
-  <div class="step" id="step3">
-    <div class="success-icon">
-      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-    </div>
-    <p class="success-title">¡Foto guardada!</p>
-    <p class="success-sub">Ya está en tu celular, lista para subirse</p>
-    <div class="filename-box">Archivo guardado como:<br><strong id="filenameText"></strong></div>
-    <div class="instrucciones">
-      <div class="instrucciones-title">Siguiente paso</div>
-      <div class="inst-item">
-        <div class="inst-num">1</div>
-        <span>La foto se descargó a tu carpeta de <strong>Descargas / Galería</strong></span>
-      </div>
-      <div class="inst-item">
-        <div class="inst-num">2</div>
-        <span>Abre el <strong>formulario de Google</strong> de la biblioteca</span>
-      </div>
-      <div class="inst-item">
-        <div class="inst-num">3</div>
-        <span>En la pregunta de la foto, toca <strong>subir archivo</strong> y selecciona la imagen que acabas de guardar</span>
-      </div>
-    </div>
-    <button class="btn-secondary" style="width:100%" id="resetBtn">Tomar otra foto</button>
-  </div>
-</div>
-
-<script>
-const OUT_W = 826, OUT_H = 1062;
-let finalDataUrl = null;
-let alumnoNombre = '';
-let currentStream = null;
-let facingMode = 'user';
-
-function showStep(n){
-  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-  document.getElementById('step' + n).classList.add('active');
-}
-
-function updateMirror(){
-  const video = document.getElementById('video');
-  if(facingMode === 'user'){
-    video.classList.add('mirrored');
-    document.getElementById('camModeLabel').textContent = 'Cámara frontal';
-  } else {
-    video.classList.remove('mirrored');
-    document.getElementById('camModeLabel').textContent = 'Cámara trasera';
-  }
-}
-
-async function startCamera(){
-  if(currentStream){
-    currentStream.getTracks().forEach(t => t.stop());
-  }
-  try {
-    currentStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:facingMode}, audio:false});
-    document.getElementById('video').srcObject = currentStream;
-    updateMirror();
-  } catch(err) {
-    alert('No se pudo acceder a la cámara. Asegúrate de dar permiso cuando el navegador lo solicite.');
-    document.getElementById('camArea').style.display = 'none';
-    document.getElementById('openCamBtn').style.display = 'flex';
-  }
-}
-
-document.getElementById('openCamBtn').addEventListener('click', async () => {
-  const name = document.getElementById('nameInput').value.trim();
-  if(!name){ alert('Por favor escribe tu nombre antes de continuar.'); return; }
-  document.getElementById('camArea').style.display = 'block';
-  document.getElementById('openCamBtn').style.display = 'none';
-  facingMode = 'user';
-  await startCamera();
-});
-
-document.getElementById('switchCamBtn').addEventListener('click', async () => {
-  facingMode = (facingMode === 'user') ? 'environment' : 'user';
-  await startCamera();
-});
-
-document.getElementById('snapBtn').addEventListener('click', () => {
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('hiddenCanvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  if(facingMode === 'user'){
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
-  }
-  ctx.drawImage(video, 0, 0);
-  if(currentStream) currentStream.getTracks().forEach(t => t.stop());
-  cropAndShow(canvas);
-});
-
-function cropAndShow(sourceCanvas){
-  const sw = sourceCanvas.width, sh = sourceCanvas.height;
-  const targetRatio = OUT_W / OUT_H;
-  const sourceRatio = sw / sh;
-  let sx, sy, sSize_w, sSize_h;
-  if(sourceRatio > targetRatio){
-    sSize_h = sh; sSize_w = sh * targetRatio;
-    sx = (sw - sSize_w) / 2; sy = 0;
-  } else {
-    sSize_w = sw; sSize_h = sw / targetRatio;
-    sx = 0; sy = (sh - sSize_h) / 2;
-  }
-  const crop = document.getElementById('cropCanvas');
-  crop.width = OUT_W; crop.height = OUT_H;
-  crop.getContext('2d').drawImage(sourceCanvas, sx, sy, sSize_w, sSize_h, 0, 0, OUT_W, OUT_H);
-  finalDataUrl = crop.toDataURL('image/jpeg', 0.92);
-  showStep(2);
-}
-
-document.getElementById('retakeBtn').addEventListener('click', async () => {
-  finalDataUrl = null;
-  showStep(1);
-  document.getElementById('camArea').style.display = 'block';
-  document.getElementById('openCamBtn').style.display = 'none';
-  await startCamera();
-});
-
-document.getElementById('sendBtn').addEventListener('click', () => {
-  if(!finalDataUrl){ alert('Primero toma una foto.'); return; }
-  const name = document.getElementById('nameInput').value.trim();
-  alumnoNombre = name;
-  const filename = 'credencial_' + name.replace(/\s+/g,'_') + '.jpg';
-  const a = document.createElement('a');
-  a.href = finalDataUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  document.getElementById('filenameText').textContent = filename;
-  showStep(3);
-});
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-  document.getElementById('nameInput').value = '';
-  finalDataUrl = null;
-  alumnoNombre = '';
-  document.getElementById('camArea').style.display = 'none';
-  document.getElementById('openCamBtn').style.display = 'flex';
-  showStep(1);
-});
-</script>
-</body>
-</html>
+    <canvas
