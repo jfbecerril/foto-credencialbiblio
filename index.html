@@ -23,8 +23,9 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 .step{display:none}.step.active{display:block}
 .cam-btn{width:100%;padding:.75rem;background:#077B64;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:.75rem;display:flex;align-items:center;justify-content:center;gap:8px}
 .cam-btn:hover{background:#055c4c}
-.cam-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;margin-bottom:.75rem}
-.cam-wrap video{display:block;width:100%;height:auto}
+.cam-wrap{position:relative;width:100%;aspect-ratio:826/1062;border-radius:12px;overflow:hidden;background:#000;margin-bottom:.75rem}
+.cam-wrap video{display:block;width:100%;height:100%;object-fit:cover}
+.field-hint{font-size:12px;color:#888;margin:-.5rem 0 .75rem}
 .cam-wrap video.mirrored{transform:scaleX(-1)}
 .cam-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
 .switch-cam-btn{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.45);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2}
@@ -83,10 +84,6 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
     </div>
     <div class="tip-item">
       <div class="tip-icon warn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
-      <span>Evita ropa <strong>blanca</strong> — usa otro color para contrastar con el fondo</span>
-    </div>
-    <div class="tip-item">
-      <div class="tip-icon warn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
       <span>Sin <strong>gorras, sombreros</strong> ni accesorios en la cabeza</span>
     </div>
     <div class="tip-item">
@@ -97,6 +94,9 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 
   <!-- Paso 1: captura -->
   <div class="step active" id="step1">
+    <label class="field-label">Tu matrícula o número de ficha</label>
+    <input type="text" class="name-field" id="matInput" placeholder="Ej: 24120069" inputmode="numeric" maxlength="8" autocomplete="off">
+    <p class="field-hint">8 dígitos. La foto se guardará con este número.</p>
     <label class="field-label">Tu nombre(s) y apellidos</label>
     <input type="text" class="name-field" id="nameInput" placeholder="Ej: Juan Pérez Contreras" autocomplete="off" style="margin-bottom:.75rem">
     <button class="cam-btn" id="openCamBtn" style="margin-bottom:.75rem">
@@ -161,7 +161,7 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
       <div class="instrucciones-title">Siguiente paso</div>
       <div class="inst-item">
         <div class="inst-num">1</div>
-        <span>La foto se descargó a tu carpeta de <strong>Descargas / Galería</strong></span>
+        <span>La foto quedó en tu <strong>Galería / Fotos</strong> o en <strong>Descargas</strong> (si apareció el menú Compartir, elige <strong>Guardar imagen</strong>)</span>
       </div>
       <div class="inst-item">
         <div class="inst-num">2</div>
@@ -179,6 +179,7 @@ h1{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 <script>
 const OUT_W = 826, OUT_H = 1062;
 let finalDataUrl = null;
+let finalBlob = null;
 let alumnoNombre = '';
 let currentStream = null;
 let facingMode = 'user';
@@ -215,7 +216,9 @@ async function startCamera(){
 }
 
 document.getElementById('openCamBtn').addEventListener('click', async () => {
+  const mat = document.getElementById('matInput').value.trim();
   const name = document.getElementById('nameInput').value.trim();
+  if(!/^\d{8}$/.test(mat)){ alert('Escribe tu matrícula completa: 8 dígitos, solo números.'); return; }
   if(!name){ alert('Por favor escribe tu nombre antes de continuar.'); return; }
   document.getElementById('camArea').style.display = 'block';
   document.getElementById('openCamBtn').style.display = 'none';
@@ -234,11 +237,7 @@ document.getElementById('snapBtn').addEventListener('click', () => {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   const ctx = canvas.getContext('2d');
-  if(facingMode === 'user'){
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
-  }
-  ctx.drawImage(video, 0, 0);
+  ctx.drawImage(video, 0, 0); // se guarda sin espejo, como la ve otra persona
   if(currentStream) currentStream.getTracks().forEach(t => t.stop());
   cropAndShow(canvas);
 });
@@ -259,6 +258,8 @@ function cropAndShow(sourceCanvas){
   crop.width = OUT_W; crop.height = OUT_H;
   crop.getContext('2d').drawImage(sourceCanvas, sx, sy, sSize_w, sSize_h, 0, 0, OUT_W, OUT_H);
   finalDataUrl = crop.toDataURL('image/jpeg', 0.92);
+  finalBlob = null;
+  crop.toBlob(b => { finalBlob = b; }, 'image/jpeg', 0.92);
   showStep(2);
 }
 
@@ -270,23 +271,35 @@ document.getElementById('retakeBtn').addEventListener('click', async () => {
   await startCamera();
 });
 
-document.getElementById('sendBtn').addEventListener('click', () => {
+document.getElementById('sendBtn').addEventListener('click', async () => {
   if(!finalDataUrl){ alert('Primero toma una foto.'); return; }
-  const name = document.getElementById('nameInput').value.trim();
-  alumnoNombre = name;
-  const filename = name.replace(/\s+/g,'_') + '.jpg';
-  const a = document.createElement('a');
-  a.href = finalDataUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const mat = document.getElementById('matInput').value.trim();
+  alumnoNombre = document.getElementById('nameInput').value.trim();
+  const filename = mat + '.jpg';
+  let guardada = false;
+  // En celulares: menú Compartir → "Guardar imagen" (funciona en iPhone y Android)
+  if(finalBlob && navigator.canShare){
+    const file = new File([finalBlob], filename, {type:'image/jpeg'});
+    if(navigator.canShare({files:[file]})){
+      try { await navigator.share({files:[file], title:'Foto credencial ' + mat}); guardada = true; }
+      catch(e){ if(e.name === 'AbortError') return; }
+    }
+  }
+  if(!guardada){
+    const a = document.createElement('a');
+    a.href = finalDataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
   document.getElementById('filenameText').textContent = filename;
   showStep(3);
 });
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('nameInput').value = '';
+  document.getElementById('matInput').value = '';
   finalDataUrl = null;
   alumnoNombre = '';
   document.getElementById('camArea').style.display = 'none';
